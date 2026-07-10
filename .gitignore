@@ -1,0 +1,14 @@
+# Results (large binaries)
+results/*.ncu-rep
+results/*.nsys-rep
+results/*.qdrep
+
+# Model files (downloaded on forge, not committed)
+data/models/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
