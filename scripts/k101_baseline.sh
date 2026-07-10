@@ -3,12 +3,9 @@
 # Measures tok/s, VRAM, and kernel breakdown via ncu.
 set -euo pipefail
 
-MODEL_DIR="/mnt/data/models"
-MODEL_NAME="qwen2.5-14b-instruct"
-MODEL_FILE="$MODEL_DIR/$MODEL_NAME/Q4_K_M.gguf"
-HF_REPO="bartowski/Qwen2.5-14B-Instruct-GGUF"
-HF_FILE="Qwen2.5-14B-Instruct-Q4_K_M.gguf"
-RESULTS_DIR="results/k101-baseline"
+MODEL_DIR="/mnt/data/models/qwen2.5-14b-instruct"
+MODEL_FILE="$MODEL_DIR/Qwen2.5-14B-Instruct-Q4_K_M.gguf"
+RESULTS_DIR="/home/vulcan/src/kernel-research/results/k101-baseline"
 LLAMA_DIR="/mnt/data/llama.cpp"
 
 echo "=== K-101: Profile Baseline ==="
@@ -16,33 +13,14 @@ echo "Model: Qwen2.5-14B-Instruct Q4_K_M GGUF"
 echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader)"
 echo ""
 
-# ── Step 1: Check/install llama.cpp ─────────────────────────────
-if [ ! -f "$LLAMA_DIR/build/bin/llama-bench" ]; then
-    echo "[1/5] Building llama.cpp..."
-    if [ ! -d "$LLAMA_DIR" ]; then
-        git clone https://github.com/ggerganov/llama.cpp.git "$LLAMA_DIR"
-    fi
-    cd "$LLAMA_DIR"
-    cmake -B build -DGGML_CUDA=ON
-    cmake --build build --config Release -j$(nproc)
-else
-    echo "[1/5] llama.cpp found at $LLAMA_DIR"
-fi
+# ── Step 1: Verify tools ───────────────────────────────────────
+echo "[1/3] Tools check..."
+ncu --version 2>&1 | head -1
+"$LLAMA_DIR/build/bin/llama-bench" --version 2>&1 || echo "  (version flag not supported)"
+ls -lh "$MODEL_FILE"
 
-# ── Step 2: Pull model ──────────────────────────────────────────
-if [ ! -f "$MODEL_FILE" ]; then
-    echo "[2/5] Downloading $HF_REPO → $MODEL_DIR/$MODEL_NAME..."
-    mkdir -p "$MODEL_DIR/$MODEL_NAME"
-    python3 -c "
-from huggingface_hub import hf_hub_download
-hf_hub_download('$HF_REPO', '$HF_FILE', local_dir='$MODEL_DIR/$MODEL_NAME')
-"
-else
-    echo "[2/5] Model found at $MODEL_FILE"
-fi
-
-# ── Step 3: Quick bench (tok/s) ─────────────────────────────────
-echo "[3/5] llama-bench (prompt 512, gen 128)..."
+# ── Step 2: Quick bench (tok/s) ─────────────────────────────────
+echo "[2/3] llama-bench (prompt 512, gen 128)..."
 mkdir -p "$RESULTS_DIR"
 "$LLAMA_DIR/build/bin/llama-bench" \
     -m "$MODEL_FILE" \
@@ -60,8 +38,8 @@ print(f'  Model size: {data[0][\"model_size\"]} GB')
 print(f'  VRAM used: {data[0][\"model_size\"]} GB (weights only)')
 " 2>/dev/null || echo "  (bench json parse skipped — run directly for numbers)"
 
-# ── Step 4: ncu kernel breakdown ────────────────────────────────
-echo "[4/5] ncu kernel profile (prompt 64, gen 32 — small for speed)..."
+# ── Step 3: ncu kernel breakdown ────────────────────────────────
+echo "[3/3] ncu kernel profile (prompt 64, gen 32 — small for speed)..."
 echo 'Write a one-sentence story about a robot learning to paint.' > /tmp/k101_prompt.txt
 
 ncu --set full \
