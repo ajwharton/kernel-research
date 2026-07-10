@@ -15,18 +15,25 @@ Targeting inference throughput on real model sizes (14B+ parameters).
 |-------|------|--------|--------|
 | Qwen2.5-14B-Instruct | 14B | GGUF Q4_K_M | K-101 baseline |
 
-## Experiments (following K-101 → K-104 plan)
+## Experiments
 
 | ID | Name | Status | Result |
 |----|------|--------|--------|
-| K-101 | Profile baseline | pending | — |
-| K-102 | compile A/B | pending | — |
-| K-103 | Attention backend | pending | — |
-| K-104 | Triton residual | pending | — |
+| K-101 | Profile baseline | ✅ done | 23.6 tok/s, 89% matmul |
+| K-102 | CUDA vs CPU | ✅ done | 8× GPU speedup, roofline reached |
+| K-103 | Attention backend | ⏭️ skipped | Attention only 2%, Flash already active |
+| K-104 | Triton residual | ⏭️ skipped | No named leftover op ≥5% |
 
-## Repository layout
+## Planned
 
-```
+| ID | Name | Description |
+|----|------|-------------|
+| S-101 | Speculative decoding | Draft model + target model, measure acceptance rate and speedup |
+| Q-101 | Quantization ladder | Benchmark Q2_K → Q8_0 throughput vs perplexity |
+
+## Prior learnings
+
+See `learnings/2026-07-09-triton-mlp-fusion.md` — Triton vs cuBLAS tiling, NVFP4 tooling status (from earlier session on Qwen2.5-1.5B PyTorch).
 scripts/         Profiling and benchmark scripts
 data/            Model paths, experiment configs
 results/         Benchmark results, ncu/nsys traces
